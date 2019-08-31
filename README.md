@@ -9,6 +9,7 @@ The `dac_loss.py` is slightly modifed from its [original implementation](https:/
 - PyTorch 1.1+
 - TorchVision 0.3+
 
+### How to train & test
 ```bash
 pip install -r requirements.txt
 python main.py
