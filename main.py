@@ -84,7 +84,7 @@ def train(args, model, criterion, device, train_loader, optimizer, epoch):
                 abst_acc = 0.
 
         #if batch_idx % args.log_interval == 0:
-    print('Train epoch {:02d}: Loss {:.6f} abstained {:04d}, correct {:.3f}%, abst_acc {:.3f}%'.format(
+    print('Train epoch {:02d}: Loss {:.6f} abstained {:05d}, correct {:.3f}%, abst_acc {:.3f}%'.format(
           epoch, loss.item(), abstain, 100.*correct/float(total), abst_acc))
     print('alpha = {:.6f}'.format(criterion.alpha_var) if criterion.alpha_var is not None else 'alpha = None')
 
