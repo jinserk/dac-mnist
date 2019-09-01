@@ -1,4 +1,5 @@
 from __future__ import print_function
+import random
 import argparse
 from tqdm import tqdm
 
@@ -21,15 +22,15 @@ class ErrorDataset(Dataset):
                                        transforms.Normalize((0.1307,), (0.3081,))
                                    ]))
 
-        self.distored_idx = torch.randint(0, len(self.base), (n_error, ))
+        self.error_idx = torch.randperm(len(self.base))[:n_error]
 
     def __getitem__(self, index):
         x, t = self.base[index]
-        if index in self.distored_idx:
+        if index in self.error_idx:
             mod_t = t + 1 if t < 9 else 0
-            return x, mod_t
+            return x, mod_t, index
         else:
-            return x, t
+            return x, t, index
 
     def __len__(self):
         return len(self.base)
@@ -63,8 +64,10 @@ def train(args, model, criterion, device, train_loader, optimizer, epoch):
     total = 0
     abstain = 0
 
+    total_abstained = []
+
     with tqdm(enumerate(train_loader), total=len(train_loader), desc="epoch {:02d}".format(epoch)) as t:
-        for batch_idx, (data, target) in t:
+        for batch_idx, (data, target, index) in t:
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
@@ -77,15 +80,22 @@ def train(args, model, criterion, device, train_loader, optimizer, epoch):
             total += target.size(0)
             correct += predicted.eq(target).cpu().sum().item()
 
-            abstain += predicted.eq(10).sum().item()
-            if total != abstain:
-                abst_acc = 100. * correct / float(total - abstain)
-            else:
-                abst_acc = 0.
+            abstained = predicted.eq(10).cpu()
+            total_abstained.extend(index[abstained].tolist())
 
-        #if batch_idx % args.log_interval == 0:
-    print('Train epoch {:02d}: Loss {:.6f} abstained {:05d}, correct {:.3f}%, abst_acc {:.3f}%'.format(
-          epoch, loss.item(), abstain, 100.*correct/float(total), abst_acc))
+    total_abstained = set(total_abstained)
+    abs_inter = total_abstained.intersection(train_loader.dataset.error_idx.tolist())
+    abs_precision = len(abs_inter) / len(train_loader.dataset.error_idx) * 100.
+
+    if total != len(total_abstained):
+        abst_acc = 100. * correct / float(total - len(total_abstained))
+    else:
+        abst_acc = 0.
+
+    #if batch_idx % args.log_interval == 0:
+
+    print('Train epoch {:02d}: Loss {:.6f} abstained {:05d}, abstained_precision {:.3f}%, correct {:.3f}%, abst_acc {:.3f}%'.format(
+          epoch, loss.item(), len(total_abstained), abs_precision, 100.*correct/float(total), abst_acc))
     print('alpha = {:.6f}'.format(criterion.alpha_var) if criterion.alpha_var is not None else 'alpha = None')
 
 
